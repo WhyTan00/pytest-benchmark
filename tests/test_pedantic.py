@@ -198,3 +198,57 @@ def test_cant_use_setup_with_many_iterations(benchmark):
 def test_iterations_must_be_positive_int(benchmark, value):
     with pytest.raises(ValueError):
         benchmark.pedantic(None, setup=lambda: None, iterations=value)
+
+
+@pytest.mark.parametrize('use_setup', [False, True])
+@pytest.mark.parametrize('disabled', [False, True])
+def test_teardown_with_disabled_benchmark(benchmark, disabled, use_setup):
+    benchmark.disabled = disabled
+    events = []
+    value = []
+    result = object()
+
+    def setup():
+        events.append('setup')
+        return (value,), {'item': 123}
+
+    def target(values, *, item):
+        events.append('target')
+        values.append(item)
+        return result
+
+    def teardown(values, *, item):
+        events.append('teardown')
+        assert values is value
+        assert values.pop() == item
+
+    options = {'setup': setup} if use_setup else {'args': (value,), 'kwargs': {'item': 123}}
+    assert benchmark.pedantic(target, teardown=teardown, **options) is result
+    assert events == (['setup'] if use_setup else []) + ['target', 'teardown']
+    assert value == []
+
+
+def test_disabled_teardown_runs_once(benchmark):
+    benchmark.disabled = True
+    events = []
+    result = benchmark.pedantic(
+        lambda: events.append('target'),
+        teardown=lambda: events.append('teardown'),
+        rounds=3,
+        iterations=2,
+        warmup_rounds=4,
+    )
+    assert result is None
+    assert events == ['target', 'teardown']
+    assert benchmark.stats is None
+
+
+def test_disabled_teardown_error(benchmark):
+    benchmark.disabled = True
+
+    def teardown():
+        raise ValueError('teardown failed')
+
+    with pytest.raises(ValueError, match='teardown failed'):
+        benchmark.pedantic(lambda: 123, teardown=teardown)
+    assert benchmark.has_error

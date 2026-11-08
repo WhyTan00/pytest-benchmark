@@ -2,6 +2,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Fixed pedantic benchmarks skipping ``teardown`` after a successful call when
+  benchmarking is disabled.
+  Contributed by WhyTan00 with AI assistance.
+
 v5.3.1 (2026-11-01)
 -------------------
 

@@ -319,7 +319,10 @@ class BenchmarkFixture:
 
         if self.disabled:
             args, kwargs = make_arguments()
-            return target(*args, **kwargs)
+            result = target(*args, **kwargs)
+            if teardown is not None:
+                teardown(*args, **kwargs)
+            return result
 
         stats = self._make_stats(iterations)
         loops_range = range(iterations) if iterations > 1 else None
